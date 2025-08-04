@@ -55,5 +55,6 @@ php artisan route:cache
 php artisan view:cache
 
 # Start the server
-echo "🚀 Starting Laravel server..."
-exec php artisan serve --host=0.0.0.0 --port=8000
+echo "🚀 Starting Laravel server on 0.0.0.0:8000..."
+echo "Server will be accessible at: http://$(hostname -I | awk '{print $1}'):8000"
+exec php artisan serve --host=0.0.0.0 --port=8000 --env=production
