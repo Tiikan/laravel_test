@@ -2,7 +2,6 @@ FROM php:8.1-fpm
 
 WORKDIR /var/www
 
-# Install PHP extensions
 RUN apt-get update && apt-get install -y \
     unzip zip git curl libzip-dev libpng-dev libonig-dev libxml2-dev \
     && docker-php-ext-install pdo pdo_mysql zip
@@ -10,13 +9,16 @@ RUN apt-get update && apt-get install -y \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy Laravel app
+# Copy source (Laravel files)
 COPY . .
 
-# Install dependencies
-RUN composer install --no-interaction --prefer-dist
+# 👇 TEMP DEBUG: Show directory and files
+RUN ls -la && cat composer.json
 
-# Generate key
-RUN php artisan key:generate
+# Run Composer install
+RUN composer install --no-interaction --prefer-dist || cat /var/www/storage/logs/laravel.log
+
+# Laravel setup
+RUN php artisan key:generate || true
 
 CMD php artisan serve --host=0.0.0.0 --port=8000
