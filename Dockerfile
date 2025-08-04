@@ -1,30 +1,33 @@
 FROM php:8.1
 
-# Install system dependencies and PHP extensions
+# Install required extensions
 RUN apt-get update && apt-get install -y \
-    zip unzip git curl libzip-dev libpng-dev libonig-dev libxml2-dev libpq-dev \
-    && docker-php-ext-install pdo pdo_mysql mbstring zip bcmath
+    git curl zip unzip libzip-dev libpng-dev libonig-dev libxml2-dev \
+    && docker-php-ext-install pdo pdo_mysql zip mbstring bcmath
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
+# Set working dir
 WORKDIR /var/www
 
-# Copy Laravel project files
+# Copy app files
 COPY . .
 
-# Ensure .env exists (skip if already there)
+# Copy .env if missing
 RUN cp .env.example .env || true
 
-# Install Laravel dependencies
-RUN composer install --no-interaction --prefer-dist || true
+# Install dependencies
+RUN composer install || true
 
-# Set correct permissions
+# Laravel key (optional here)
+RUN php artisan config:clear || true
+
+# Permissions
 RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
-# Expose Laravel dev server
+# Expose port
 EXPOSE 8000
 
-# Start Laravel dev server
+# Debug CMD — safer startup
 CMD php artisan serve --host=0.0.0.0 --port=8000
