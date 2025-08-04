@@ -2,11 +2,13 @@ version: '3.8'
 
 services:
   app:
-    image: php:8.1-fpm
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - .:/var/www/html
+      - .:/var/www
     depends_on:
       - db
     environment:
@@ -28,7 +30,7 @@ services:
     volumes:
       - dbdata:/var/lib/mysql
     ports:
-      - "3307:3306"
+      - "3307:3306"  # Changed to avoid host conflict
 
 volumes:
   dbdata:
