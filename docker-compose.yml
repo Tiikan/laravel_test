@@ -5,10 +5,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+    container_name: laravel_app
+    working_dir: /var/www
     volumes:
       - .:/var/www
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    ports:
+      - "8000:8000"
     depends_on:
       - db
     environment:
@@ -21,16 +24,17 @@ services:
 
   db:
     image: mysql:8.0
+    container_name: laravel_db
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: laravel
       MYSQL_USER: pixelip
       MYSQL_PASSWORD: Kang@2k25
-    ports:
-      - "3307:3306"  # avoid conflict with host MySQL
     volumes:
       - dbdata:/var/lib/mysql
+    ports:
+      - "3307:3306"
 
 volumes:
   dbdata:
