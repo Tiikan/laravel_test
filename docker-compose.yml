@@ -27,10 +27,10 @@ services:
       MYSQL_DATABASE: laravel
       MYSQL_USER: pixelip
       MYSQL_PASSWORD: Kang@2k25
+    ports:
+      - "3307:3306"  # avoid conflict with host MySQL
     volumes:
       - dbdata:/var/lib/mysql
-    ports:
-      - "3307:3306"  # Changed to avoid host conflict
 
 volumes:
   dbdata:
