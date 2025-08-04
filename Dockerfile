@@ -21,7 +21,7 @@ RUN composer install
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
 # Expose the Laravel dev server
-EXPOSE 8200
+EXPOSE 8000
 
 # Start Laravel dev server
-CMD php artisan serve --host=0.0.0.0 --port=8200
+CMD php artisan serve --host=0.0.0.0 --port=8000
