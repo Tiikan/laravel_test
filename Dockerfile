@@ -1,18 +1,21 @@
-FROM php:8.1-fpm
+FROM php:8.1
 
-# Install dependencies, PHP extensions for Laravel
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    libzip-dev zip unzip \
-    && docker-php-ext-install pdo_mysql zip
+    zip unzip git curl libzip-dev libpng-dev libonig-dev libxml2-dev \
+    && docker-php-ext-install pdo pdo_mysql zip
 
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set working directory
 WORKDIR /var/www
 
+# Copy app files
 COPY . .
 
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
+# Install PHP dependencies
 RUN composer install
 
-CMD ["php-fpm"]
-
-EXPOSE 8000
+# Run Laravel dev server
+CMD php artisan serve --host=0.0.0.0 --port=8000
