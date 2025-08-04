@@ -52,20 +52,21 @@ services:
       timeout: 20s
       retries: 10
 
-  nginx:
-    image: nginx:alpine
-    container_name: laravel_nginx
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-      - "8443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./public:/var/www/public
-    depends_on:
-      - app
-    networks:
-      - laravel_network
+# Nginx service removed for simplicity - using Laravel's built-in server
+  # If you need Nginx later, uncomment and ensure nginx.conf exists
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: laravel_nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/conf.d/default.conf
+  #     - ./public:/var/www/public
+  #   depends_on:
+  #     - app
+  #   networks:
+  #     - laravel_network
 
 volumes:
   dbdata:
