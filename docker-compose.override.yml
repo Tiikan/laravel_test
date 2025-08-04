@@ -1,0 +1,32 @@
+# Development overrides for docker-compose.yml
+# This file is automatically loaded by docker-compose for development
+
+version: '3.8'
+
+services:
+  app:
+    environment:
+      APP_ENV: local
+      APP_DEBUG: true
+      LOG_LEVEL: debug
+    volumes:
+      # Mount source code for development
+      - .:/var/www
+      - /var/www/vendor  # Exclude vendor directory
+      - /var/www/node_modules  # Exclude node_modules
+    command: >
+      sh -c "composer install --dev &&
+             php artisan key:generate --force &&
+             php artisan migrate --force &&
+             php artisan serve --host=0.0.0.0 --port=8000"
+
+  db:
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    
+  # Remove nginx for development (use Laravel's built-in server)
+  nginx:
+    profiles:
+      - production  # Only start nginx in production

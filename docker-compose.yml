@@ -6,14 +6,16 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: laravel_app
+    restart: unless-stopped
     working_dir: /var/www
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      APP_ENV: local
-      APP_DEBUG: true
+      APP_ENV: production
+      APP_DEBUG: false
       APP_KEY: base64:/X+K6OEClrSLDlq0zN8i4J1VGCKTnQa3j5/XSvEePSg=
       DB_CONNECTION: mysql
       DB_HOST: db
@@ -21,11 +23,19 @@ services:
       DB_DATABASE: laravel
       DB_USERNAME: pixelip
       DB_PASSWORD: Kang@2k25
+      CACHE_DRIVER: file
+      SESSION_DRIVER: file
+      QUEUE_CONNECTION: sync
+    volumes:
+      - ./storage/app:/var/www/storage/app
+      - ./storage/logs:/var/www/storage/logs
+    networks:
+      - laravel_network
 
   db:
     image: mysql:8.0
     container_name: laravel_db
-    restart: always
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: laravel
@@ -35,6 +45,31 @@ services:
       - dbdata:/var/lib/mysql
     ports:
       - "3307:3306"  # Host port 3307 to avoid conflict
+    networks:
+      - laravel_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  nginx:
+    image: nginx:alpine
+    container_name: laravel_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./public:/var/www/public
+    depends_on:
+      - app
+    networks:
+      - laravel_network
 
 volumes:
   dbdata:
+
+networks:
+  laravel_network:
+    driver: bridge

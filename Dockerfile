@@ -1,29 +1,50 @@
-FROM php:8.1-fpm
+# Multi-stage build for production optimization
+FROM php:8.2-fpm as base
 
 WORKDIR /var/www
 
 # Install system dependencies & PHP extensions needed by Laravel
 RUN apt-get update && apt-get install -y \
     zip unzip git curl libzip-dev libpng-dev libonig-dev libxml2-dev \
-    && docker-php-ext-install pdo pdo_mysql zip mbstring bcmath
+    libfreetype6-dev libjpeg62-turbo-dev libpng-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql zip mbstring bcmath gd \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer globally
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy all project files
+# Copy composer files first for better caching
+COPY composer.json composer.lock ./
+
+# Install Composer dependencies (without dev dependencies for production)
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+
+# Copy application files
 COPY . .
 
-# Install Composer dependencies
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+# Complete composer installation with scripts
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
-# Generate application key
-RUN php artisan key:generate
+# Create required directories and set permissions
+RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# Fix permissions (storage + cache)
-RUN chmod -R 775 storage bootstrap/cache
+# Generate application key if not set
+RUN php artisan key:generate --no-interaction || true
+
+# Cache configuration and routes for better performance
+RUN php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache
 
 # Expose port 8000
 EXPOSE 8000
+
+# Create a non-root user
+RUN useradd -ms /bin/bash laravel
+USER laravel
 
 # Start Laravel server
 CMD php artisan serve --host=0.0.0.0 --port=8000
