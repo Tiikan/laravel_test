@@ -1,4 +1,4 @@
-# Docker Compose file for Laravel application
+version: '3.8'
 
 services:
   app:
@@ -18,7 +18,7 @@ services:
       APP_DEBUG: false
       APP_KEY: base64:/X+K6OEClrSLDlq0zN8i4J1VGCKTnQa3j5/XSvEePSg=
       DB_CONNECTION: mysql
-      DB_HOST: laravel_db
+      DB_HOST: db
       DB_PORT: 3306
       DB_DATABASE: laravel
       DB_USERNAME: pixelip
@@ -27,7 +27,7 @@ services:
       SESSION_DRIVER: file
       QUEUE_CONNECTION: sync
     volumes:
-      - .:/var/www
+      - app_storage:/var/www/storage
     networks:
       - laravel_network
 
@@ -43,16 +43,21 @@ services:
     volumes:
       - dbdata:/var/lib/mysql
     ports:
-      - "3307:3306"  # Host port 3307 to avoid conflict
+      - "3307:3306"
     networks:
       - laravel_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 20s
       retries: 10
+      interval: 10s
+      start_period: 30s
 
 volumes:
   dbdata:
+    driver: local
+  app_storage:
+    driver: local
 
 networks:
   laravel_network:

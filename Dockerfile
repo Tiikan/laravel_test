@@ -35,6 +35,10 @@ COPY . .
 # Copy built frontend
 COPY --from=frontend /app/public/build ./public/build
 
+# Copy and setup startup script (before changing user)
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
 # Permissions + .env setup
 RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache \
     && chown -R www-data:www-data /var/www \
@@ -44,30 +48,5 @@ RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cac
 USER www-data
 
 EXPOSE 8000
-
-# Create startup script
-COPY <<EOF /usr/local/bin/start.sh
-#!/bin/bash
-set -e
-
-# Wait for database to be ready
-echo "Waiting for database..."
-until php artisan migrate:status > /dev/null 2>&1; do
-    echo "Database not ready, waiting..."
-    sleep 2
-done
-
-# Run Laravel optimizations
-echo "Running Laravel optimizations..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-
-# Start the server
-echo "Starting Laravel server..."
-exec php artisan serve --host=0.0.0.0 --port=8000
-EOF
-
-RUN chmod +x /usr/local/bin/start.sh
 
 CMD ["/usr/local/bin/start.sh"]
