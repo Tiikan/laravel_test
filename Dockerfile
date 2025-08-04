@@ -52,8 +52,9 @@ RUN php artisan key:generate --no-interaction || true
 # Cache configuration and routes for better performance
 RUN php artisan config:cache \
     && php artisan route:cache \
-    && php artisan view:cache
-
+    && php artisan view:cache \
+    && php artisan migrate --force
+    
 # Expose port 8000
 EXPOSE 8000
 
