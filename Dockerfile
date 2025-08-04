@@ -23,19 +23,26 @@ RUN apt-get update && apt-get install -y \
 # Install Composer globally
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy composer files
+# Copy composer files first
 COPY composer.json composer.lock ./
 
 # Install Composer dependencies
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 
-# Copy application files
+# Copy ALL application files (including artisan)
 COPY . .
 
-# Copy built frontend
-COPY --from=frontend /app/public/build ./public/build
+# Verify artisan file was copied
+RUN ls -la /var/www/ && \
+    if [ ! -f "/var/www/artisan" ]; then \
+        echo "ERROR: artisan file not found after copy!"; \
+        exit 1; \
+    fi
 
-# Copy and setup startup script (before changing user)
+# Copy built frontend assets
+COPY --from=frontend /app/public/build ./public/build 2>/dev/null || echo "No frontend build found, skipping..."
+
+# Copy and setup startup script
 COPY start-simple.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
 

@@ -1,0 +1,52 @@
+# Simple Laravel Dockerfile - Focus on getting it working first
+FROM php:8.2-fpm
+
+# Set working directory
+WORKDIR /var/www
+
+# Install system dependencies and PHP extensions
+RUN apt-get update && apt-get install -y \
+    zip unzip git curl libzip-dev libpng-dev libonig-dev libxml2-dev \
+    libfreetype6-dev libjpeg62-turbo-dev libpng-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql zip mbstring bcmath gd \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Copy composer files and install dependencies
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+# Copy ALL application files
+COPY . .
+
+# Debug: List files to ensure artisan is copied
+RUN echo "=== Files in /var/www after copy ===" && \
+    ls -la /var/www/ && \
+    echo "=== Checking artisan file ===" && \
+    ls -la /var/www/artisan && \
+    echo "=== artisan file content (first 5 lines) ===" && \
+    head -5 /var/www/artisan
+
+# Set up directories and permissions
+RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache && \
+    chmod -R 775 storage bootstrap/cache && \
+    chmod +x artisan
+
+# Copy startup script
+COPY start-simple.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
+# Change ownership to www-data
+RUN chown -R www-data:www-data /var/www
+
+# Switch to www-data user
+USER www-data
+
+# Expose port
+EXPOSE 8000
+
+# Start the application
+CMD ["/usr/local/bin/start.sh"]
