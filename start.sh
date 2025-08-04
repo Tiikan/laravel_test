@@ -37,24 +37,38 @@ wait_for_database() {
 # Wait for database
 wait_for_database
 
+# Check if artisan file exists
+echo "Checking artisan file..."
+if [ ! -f "/var/www/artisan" ]; then
+    echo "❌ artisan file not found at /var/www/artisan"
+    ls -la /var/www/
+    exit 1
+fi
+
+echo "✅ artisan file found"
+ls -la /var/www/artisan
+
+# Change to working directory
+cd /var/www
+
 # Generate application key if not exists
 echo "Checking application key..."
 if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:" ]; then
     echo "Generating application key..."
-    php artisan key:generate --force
+    /usr/local/bin/php /var/www/artisan key:generate --force
 fi
 
 # Run database migrations
 echo "Running database migrations..."
-php artisan migrate --force
+/usr/local/bin/php /var/www/artisan migrate --force
 
 # Run Laravel optimizations
 echo "Running Laravel optimizations..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+/usr/local/bin/php /var/www/artisan config:cache
+/usr/local/bin/php /var/www/artisan route:cache
+/usr/local/bin/php /var/www/artisan view:cache
 
 # Start the server
 echo "🚀 Starting Laravel server on 0.0.0.0:8000..."
 echo "Server will be accessible at: http://$(hostname -I | awk '{print $1}'):8000"
-exec php artisan serve --host=0.0.0.0 --port=8000 --env=production
+exec /usr/local/bin/php /var/www/artisan serve --host=0.0.0.0 --port=8000 --env=production

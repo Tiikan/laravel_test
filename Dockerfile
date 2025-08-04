@@ -36,13 +36,19 @@ COPY . .
 COPY --from=frontend /app/public/build ./public/build
 
 # Copy and setup startup script (before changing user)
-COPY start.sh /usr/local/bin/start.sh
+COPY start-simple.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
+
+# Ensure artisan is executable and in the right place
+RUN ls -la /var/www/ && \
+    chmod +x /var/www/artisan && \
+    ls -la /var/www/artisan
 
 # Permissions + .env setup
 RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache \
     && chown -R www-data:www-data /var/www \
-    && chmod -R 775 storage bootstrap/cache
+    && chmod -R 775 storage bootstrap/cache \
+    && chmod +x /var/www/artisan
 
 # Use www-data user
 USER www-data
