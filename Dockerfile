@@ -37,7 +37,7 @@ RUN ls -la /var/www/ && \
     if [ ! -f "/var/www/artisan" ]; then \
         echo "ERROR: artisan file not found after copy!"; \
         exit 1; \
-    fi
+
 
 # Copy built frontend assets
 COPY --from=frontend /app/public/build ./public/build 2>/dev/null || echo "No frontend build found, skipping..."

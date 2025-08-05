@@ -23,12 +23,10 @@ RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoload
 COPY . .
 
 # Debug: List files to ensure artisan is copied
-RUN echo "=== Files in /var/www after copy ===" && \
+RUN echo "Files in /var/www after copy:" && \
     ls -la /var/www/ && \
-    echo "=== Checking artisan file ===" && \
-    ls -la /var/www/artisan && \
-    echo "=== artisan file content (first 5 lines) ===" && \
-    head -5 /var/www/artisan
+    echo "Checking artisan file:" && \
+    ls -la /var/www/artisan
 
 # Set up directories and permissions
 RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache && \
