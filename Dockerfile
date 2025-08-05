@@ -1,82 +1,65 @@
-# Use official PHP image with FPM
+# Stage 1: Build frontend
+FROM node:18-alpine as frontend
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+
+# Stage 2: Laravel backend
 FROM php:8.2-fpm
 
-# Set working directory
-WORKDIR /var/www/html
+WORKDIR /var/www
 
-# Install system dependencies
+# Install system dependencies & PHP extensions needed by Laravel
 RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    libzip-dev \
-    zip \
-    unzip \
-    nginx \
-    supervisor \
-    cron \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    zip unzip git curl libzip-dev libpng-dev libonig-dev libxml2-dev \
+    libfreetype6-dev libjpeg62-turbo-dev libpng-dev nodejs npm \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql zip mbstring bcmath gd \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
-RUN docker-php-ext-install \
-    pdo_mysql \
-    mbstring \
-    exif \
-    pcntl \
-    bcmath \
-    gd \
-    zip \
-    opcache
-
-# Install Composer
+# Install Composer globally
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy existing application directory contents
-COPY . /var/www/html
+# Copy composer files first
+COPY composer.json composer.lock ./
 
-# Copy existing application directory permissions
-COPY --chown=www-data:www-data . /var/www/html
+# Install Composer dependencies
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Copy ALL application files (including artisan)
+COPY . .
 
-# Create necessary directories and set permissions
-RUN mkdir -p /var/www/html/storage/logs \
-    && mkdir -p /var/www/html/storage/framework/cache \
-    && mkdir -p /var/www/html/storage/framework/sessions \
-    && mkdir -p /var/www/html/storage/framework/views \
-    && mkdir -p /var/www/html/bootstrap/cache \
-    && chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
+# Verify artisan file was copied
+RUN ls -la /var/www/ && \
+    if [ ! -f "/var/www/artisan" ]; then \
+        echo "ERROR: artisan file not found after copy!"; \
+        exit 1; \
 
-# Copy custom PHP configuration
-COPY docker/php/local.ini /usr/local/etc/php/conf.d/local.ini
 
-# Copy supervisor configuration
-COPY docker/supervisord/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+# Copy built frontend assets
+COPY --from=frontend /app/public/build ./public/build 2>/dev/null || echo "No frontend build found, skipping..."
 
-# Add Laravel scheduler to crontab
-RUN echo "* * * * * www-data cd /var/www/html && php artisan schedule:run >> /dev/null 2>&1" >> /etc/crontab
+# Copy and setup startup script
+COPY start-simple.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
 
-# Create PHP-FPM pool configuration
-RUN echo '[www]' > /usr/local/etc/php-fpm.d/www.conf \
-    && echo 'user = www-data' >> /usr/local/etc/php-fpm.d/www.conf \
-    && echo 'group = www-data' >> /usr/local/etc/php-fpm.d/www.conf \
-    && echo 'listen = 127.0.0.1:9000' >> /usr/local/etc/php-fpm.d/www.conf \
-    && echo 'listen.owner = www-data' >> /usr/local/etc/php-fpm.d/www.conf \
-    && echo 'listen.group = www-data' >> /usr/local/etc/php-fpm.d/www.conf \
-    && echo 'pm = dynamic' >> /usr/local/etc/php-fpm.d/www.conf \
-    && echo 'pm.max_children = 5' >> /usr/local/etc/php-fpm.d/www.conf \
-    && echo 'pm.start_servers = 2' >> /usr/local/etc/php-fpm.d/www.conf \
-    && echo 'pm.min_spare_servers = 1' >> /usr/local/etc/php-fpm.d/www.conf \
-    && echo 'pm.max_spare_servers = 3' >> /usr/local/etc/php-fpm.d/www.conf
+# Ensure artisan is executable and in the right place
+RUN ls -la /var/www/ && \
+    chmod +x /var/www/artisan && \
+    ls -la /var/www/artisan
 
-# Expose port 9000 for PHP-FPM
+# Permissions + .env setup
+RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache \
+    && chown -R www-data:www-data /var/www \
+    && chmod -R 775 storage bootstrap/cache \
+    && chmod +x /var/www/artisan
+
+# Use www-data user
+USER www-data
+
 EXPOSE 8000
 
-# Start supervisor (manages PHP-FPM and other services)
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["/usr/local/bin/start.sh"]
